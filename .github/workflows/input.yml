@@ -1,0 +1,36 @@
+name: Inputs
+on:
+  workflow_dispatch:
+    inputs:
+      c1:
+        description: 'c1'
+        required: true
+        default: a
+        type: choice
+        options:
+          - a
+          - b
+jobs:
+  examine:
+    runs-on: windows-latest
+    steps:
+      - name: test a
+        if: ${{ inputs.c1 == 'a' }}
+        run: |
+          echo "aaaaaaaaaaaaaaaaaaaaaaaa"
+      - name: test b
+        if: ${{ inputs.c1 == 'b' }}
+        run: |
+          echo "bbbbbbbbbbbbbbbbbbbbbbbb"
+      - name: restart
+        run: |
+          shutdown -r -t 0
+      - name: yes?
+        run: |
+          echo yes
+      # - name: echo
+      #   env:
+      #     INP: ${{ inputs.c1 }}
+      #   run: 
+      #     echo $INP
+        

@@ -1,0 +1,103 @@
+name: Publish Release
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
+jobs:
+  publish_release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body_path: ./update.md
+          draft: false
+          prerelease: false
+  linux_release:
+    needs: publish_release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v2
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v2
+      with: 
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r ./requirements.txt
+        pip install pyinstaller
+    - name: Build by Pyinstaller
+      run: |
+        pyinstaller -F -n hello_world hello_world.py
+    - name: Arrange files
+      run: |
+        mkdir ./release/
+        mkdir ./release/hello_world_linux/
+        cd ./release/hello_world_linux/
+        cp ../../dist/hello_world .
+        cp ../../README.md .
+        cd ..
+    - name: Zip files
+      run: |
+        cd ./release
+        zip -r ./hello_world_linux.zip ./hello_world_linux
+    - name: Upload release assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.publish_release.outputs.upload_url }}
+        asset_path: ./release/hello_world_linux.zip
+        asset_name: hello_world_liunx.zip
+        asset_content_type: application/zip
+  windows_release:
+    runs-on: windows-latest
+    needs: publish_release
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v2
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v2
+      with: 
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r ./requirements.txt
+        pip install pyinstaller
+        choco install zip
+    - name: Build by Pyinstaller
+      run: |
+        pyinstaller -F -n hello_world.exe hello_world.py
+    - name: Arrange files
+      run: |
+        mkdir ./release/
+        mkdir ./release/hello_world_windows/
+        cd ./release/hello_world_windows/
+        cp ../../dist/hello_world.exe .
+        cp ../../README.md .
+    - name: Zip files
+      run: |
+        cd ./release
+        zip -r ./hello_world_windows.zip ./hello_world_windows
+    - name: Upload release assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.publish_release.outputs.upload_url }}
+        asset_path: ./release/hello_world_windows.zip
+        asset_name: hello_world_windows.zip
+        asset_content_type: application/zip
